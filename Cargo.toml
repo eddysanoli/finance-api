@@ -1,0 +1,10 @@
+[package]
+name = "finance_api"
+version = "0.1.0"
+edition = "2024"
+authors = ["eddysanoli"]
+description = "Personal finance API, with the goal of speeding up my ability to track and analyze my expenses"
+
+[dependencies]
+axum = "0.8.4"
+tokio = { version = "1.47.1", features = ["full"] }
