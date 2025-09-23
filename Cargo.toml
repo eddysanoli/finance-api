@@ -6,5 +6,12 @@ authors = ["eddysanoli"]
 description = "Personal finance API, with the goal of speeding up my ability to track and analyze my expenses"
 
 [dependencies]
-axum = "0.8.4"
+axum = { version = "0.8.4", features = ["http2", "macros", "ws"] }
+chrono = "0.4.41"
+env_logger = "0.11.8"
+log = "0.4.28"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.143"
+sqlx = "0.8.6"
 tokio = { version = "1.47.1", features = ["full"] }
+uuid = { version = "1.18.0", features = ["v4"] }
