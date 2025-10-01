@@ -1,19 +1,31 @@
-
 services:
   database:
     image: postgres:14.5
+    container_name: finance_test_db
     restart: always
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: test_db
     ports:
       - "5432:5432"
+    environment:
+      POSTGRES_USER: ${TEST_DB_USER}
+      POSTGRES_DB: ${TEST_DB_NAME}
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: --auth=scram-sha-256
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - local_testing
+    healthcheck:
+        test: ["CMD-SHELL", "sh -c 'pg_isready -U ${TEST_DB_USER} -d ${TEST_DB_NAME}'"]
+        start_period: 10s
+        interval: 5s
+        timeout: 10s
+        retries: 10
 
+volumes:
+  db_data:
+    driver: local
 
 networks:
   local_testing:

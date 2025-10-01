@@ -1,12 +1,25 @@
--- =================================================
---   PRODUCT AND BRAND                             
--- =================================================
+-- =============================================
+--   TRIGGERS
+-- =============================================
+
+-- Function to update the updated_at column on row modification
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =============================================
+--   PRODUCT AND BRAND                         
+-- =============================================
 
 CREATE TABLE brand (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 );
 
 CREATE TABLE product (
@@ -14,8 +27,8 @@ CREATE TABLE product (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     brand_id INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (brand_id) REFERENCES brand(id) ON DELETE SET NULL
 );
@@ -28,51 +41,51 @@ CREATE TABLE product_price (
     valid_to DATE,
 
     FOREIGN KEY (product_id) REFERENCES product(id) ON DELETE CASCADE
-)
+);
 
--- =================================================
---   LOCATION                                      
--- =================================================
+-- =============================================
+--   LOCATION                                  
+-- =============================================
 
 CREATE TABLE location (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     address TEXT,
     coordinates geography(POINT, 4326),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- =================================================
---   BUSINESS                                      
--- =================================================
+-- =============================================
+--   BUSINESS                                  
+-- =============================================
 
 CREATE TABLE business (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 );
 
--- =================================================
---   BENEFICIARY                                   
--- =================================================
+-- =============================================
+--   BENEFICIARY                               
+-- =============================================
 
 -- Relationship with an entity (cousin, sibling, etc.)
 CREATE TABLE relationship (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 );
 
 -- Entities can be both individuals or objects. For example, a car or a house can be considered an entity.
 CREATE TABLE entity (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-)
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+);
 
 -- Multiple relationships can be associated with an entity, for example, a family member
 -- can be both part of "family" and "cousin" relationships.
@@ -85,29 +98,29 @@ CREATE TABLE relationship_entity (
     FOREIGN KEY (entity_id) REFERENCES entity(id) ON DELETE CASCADE
 );
 
--- =================================================
---   OCCASION                                      
--- =================================================
+-- =============================================
+--   OCCASION                                  
+-- =============================================
 
 CREATE TABLE occasion (
     id SERIAL PRIMARY KEY,
     short_name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
     date DATE NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 );
 
--- =================================================
---   TRANSACTION                                   
--- =================================================
+-- =============================================
+--   TRANSACTION                               
+-- =============================================
 
 CREATE TABLE category (
     id SERIAL PRIMARY KEY,
     slug VARCHAR(100) NOT NULL UNIQUE,
     name VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 );
 
 -- Periodicity for recurring transactions (in the form of CRON expressions)
@@ -118,7 +131,7 @@ CREATE TABLE periodicity (
     day_of_month INT CHECK (day_of_month BETWEEN 1 AND 31),
     month INT CHECK (month BETWEEN 1 AND 12),
     day_of_week INT CHECK (day_of_week BETWEEN 0 AND 6),
-)
+);
 
 CREATE TABLE transaction (
     id SERIAL PRIMARY KEY,
@@ -138,8 +151,8 @@ CREATE TABLE transaction (
     payer_id INT,
 
     transaction_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (location_id) REFERENCES location(id) ON DELETE SET NULL
 );
@@ -173,5 +186,35 @@ CREATE TABLE transaction_product (
 
     FOREIGN KEY (transaction_id) REFERENCES transaction(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES product(id) ON DELETE CASCADE
-)
+);
+
+-- =============================================
+--   TRIGGER ATTACHMENT                        
+-- =============================================
+
+-- Attach the update_updated_at trigger to all tables with an updated_at column
+-- Notes:
+-- 1. table_schema is usually 'public' for user-defined tables
+DO $$
+DECLARE
+    table_names_record RECORD;
+BEGIN
+    FOR table_names_record IN
+        SELECT table_schema, table_name, column_name
+        FROM information_schema.tables
+        WHERE column_name = 'updated_at'
+          AND table_schema = 'public'
+    LOOP
+        EXECUTE format(
+            'CREATE TRIGGER updated_at_trigger_%I
+            BEFORE UPDATE ON %I.%I
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at();', 
+            table_names_record.table_name, 
+            table_names_record.table_schema, 
+            table_names_record.table_name
+        );
+    END LOOP;
+END $$;
+            
 
