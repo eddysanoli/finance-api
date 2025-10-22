@@ -1,0 +1,21 @@
+[sqruff]
+dialect = postgres
+exclude_rules = AM01,AM02
+rules = all
+
+[sqruff:indentation]
+indent_unit = space
+tab_space_size = 4
+indented_joins = True
+
+[sqlfluff:layout:type:comma]
+spacing_before = touch
+
+[sqlfluff:indentation]
+indented_using_on = False
+allow_implicit_indents = True
+
+[sqruff:rules]
+comma_style = trailing
+capitalization_policy = consistent
+allow_space_before_semicolon = False
