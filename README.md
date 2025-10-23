@@ -9,7 +9,7 @@ Personal finance API built with Rust, with the goal of speeding up my ability to
 - Build: `cargo build`
 - Run: `cargo run`
 - Check for compilation errors: `cargo check`
-- Watch for changes and recompile: `cargo watch -x run`
+- Watch for changes and recompile: `bacon`. Press `r` to run the repo after starting
 
 ### Database
 
